@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Multi-cloud resource allocation dashboard</title>
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/select2.min.css') }}">
+    <link href="{{ url_for('static', filename='css/datatables.min.css') }}" rel="style">
+
+    <style>
+        .header{
+        padding-left:0px;
+        }
+
+        #chart_cpu svg, #chart_pods svg, #chart_memory svg {
+           margin-top: -30px;
+           margin-bottom: -90px;
+           margin-left:2px;
+        }
+
+        #chart_cpu, #chart_pods, #chart_memory {
+          width: 100%;
+          height: 185px;
+        }
+
+        table.dataTable thead th {
+        color: white;
+        }
+
+    </style>
+
+</head>
+
+<body>
+    <div id="preloader">
+        <div class="sk-three-bounce">
+            <div class="sk-child sk-bounce1"></div>
+            <div class="sk-child sk-bounce2"></div>
+            <div class="sk-child sk-bounce3"></div>
+        </div>
+    </div>
+
+    <div id="main-wrapper">
+        <div class="header">
+            <div class="header-content">
+                <nav class="navbar navbar-expand">
+                        <div class="header-left col-lg-7">
+                            <div class="col-lg-1">
+                                <img class="logo-abbr text-primary" style="width:70px;height:70px" src="{{ url_for('static', filename='images/cloud.png') }}" alt="">
+                            </div>
+                            <div class="col-lg-11">
+                                <span class="card-title" style="font-size:20px;color:#2596be">Multi-Cloud Resource Allocation And Optimization</span>
+                            </div>
+                        </div>
+                </nav>
+            </div>
+        </div>
+
+        <div class="col-lg-12" style="margin-top:120px"></div>
+            </div>
+                    <div class="col-lg-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h4 style="color:#276b8c">Deployments Overview</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table id="allocation_overview" class="display table primary-table-bordered" style="min-width: 90%">
+                                        <thead style="background:#2596be;color:white">
+                                            <tr>
+                                                <th width="20%">Application</th>
+                                                <th>Cloud Provider</th>
+                                                <th>Cluster</th>
+                                                 <th>Replica Count</th>
+                                                 <th>Environment</th>
+                                                <th width="15%">Region</th>
+                                                <th>Monthly Cost($)</th>
+                                            </tr>
+                                        </thead>
+                                    </table>
+
+                                </div>
+                            </div>
+                        </div>
+                    <div class="row">
+                        <div class="col-lg-7 col-md-7">
+                            <div class="card">
+                                <div class="card-header" style="margin-top:20px">
+                                    <h4 style="color:#276b8c">Performance/Cluster Metrics</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table id="metrics" class="display table primary-table-bordered" style="min-width: 70%">
+                                            <thead style="background:#2596be;color:white">
+                                                <tr>
+                                                      <th width="20px">Node Name</th>
+                                                      <th width="20px">CPU Used</th>
+                                                      <th width="20px">Allocated CPU</th>
+                                                      <th width="20%">CPU Used (%)</th>
+                                                      <th width="20px">Memory Used</th>
+                                                      <th width="20px">Allocated Memory</th>
+                                                      <th width="20%">Memory Used (%)</th>
+                                                </tr>
+                                            </thead>
+                                             <tbody>
+                                             </tbody>
+                                        </table>
+
+                                    </div>
+                                </div>
+                            </div>
+                    </div>
+
+                        <div  class="col-lg-5 col-md-5">
+                            <div class="card">
+                                <div class="card-body">
+                                     <div class="card-header card-title">
+                                         <h4 style="color:#276b8c">Overall Deployments Resource Metrics</h4>
+                                     </div>
+                                    <div class="row" style="margin-top:15px">
+                                        <div class="col-xl-4 col-lg-4 col-md-4">
+                                               <h5 class="card-title" style="text-align:center">CPU</h5>
+                                                <div id="chart_cpu" class="morris_chart_height"></div>
+                                        </div>
+                                        <div class="col-xl-4 col-lg-4 col-md-4">
+                                                <h5 class="card-title" style="text-align:center">Pods</h5>
+                                                 <div id="chart_pods" class="morris_chart_height"></div>
+                                        </div>
+                                        <div class="col-xl-4 col-lg-4 col-md-4">
+                                                 <h5 class="card-title" style="text-align:center">Memory</h5>
+                                                <div id="chart_memory" class="morris_chart_height"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                </div>
+                    <div class="row">
+                        <div class="col-lg-6 col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="basic-form">
+                                        <form>
+                                            <div class="basic-list-group">
+                                            <ul class="list-group" id="suggestions_container_aws">
+                                            </ul>
+                                            </div>
+                                            <div id="optimize_alert_aws" class="alert alert-success alert-dismissible fade show" style="display:none">
+												  <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+												  <strong>Optimized!</strong> Resource optimization successful!
+											</div>
+                                            <div id="optimize_alert_aws2" class="alert alert-danger alert-dismissible fade show" style="display:none">
+												  <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+												  <strong> Resource optimization failed! </strong>
+											</div>
+                                            <div class="form-group" style="margin-top: 10px;">
+                                                <div class="bootstrap-modal">
+                                                    <button type="button" class="btn btn-info" data-toggle="modal" data-target="#basicModal2">Apply Suggestion</button>
+                                                    <div class="modal fade" id="basicModal2">
+                                                        <div class="modal-dialog" role="document">
+                                                            <div class="modal-content">
+                                                                <div class="modal-header">
+                                                                    <h5 class="modal-title">Confirm!</h5>
+                                                                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span>
+                                                                    </button>
+                                                                </div>
+                                                                <div class="modal-body">Please confirm to continue this deployment!</div>
+                                                                <div class="modal-footer">
+                                                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                                                    <button type="button" id="btn-apply-suggestion-aws" class="btn btn-info" data-dismiss="modal">Confirm</button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+
+
+
+                        <div class="col-lg-6 col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="basic-form">
+                                        <form>
+                                            <div class="basic-list-group">
+                                            <ul class="list-group" id="suggestions_container_gcp">
+                                            </ul>
+                                            </div>
+                                            <div id="optimize_alert_gcp" class="alert alert-success alert-dismissible fade show" style="display:none">
+												  <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+												  <strong>Optimized!</strong> Resource optimization successful!
+											</div>
+                                             <div id="optimize_alert_gcp2" class="alert alert-danger alert-dismissible fade show" style="display:none">
+												  <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+												  <strong>Resource optimization failed!</strong>
+											</div>
+                                            <div class="form-group" style="margin-top: 10px;">
+                                                <div class="bootstrap-modal">
+                                                    <button type="button" class="btn btn-info" data-toggle="modal" data-target="#basicModal_aws">Apply Suggestion</button>
+                                                    <div class="modal fade" id="basicModal_aws">
+                                                        <div class="modal-dialog" role="document">
+                                                            <div class="modal-content">
+                                                                <div class="modal-header">
+                                                                    <h5 class="modal-title">Confirm!</h5>
+                                                                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span>
+                                                                    </button>
+                                                                </div>
+                                                                <div class="modal-body">Please confirm to continue this deployment!</div>
+                                                                <div class="modal-footer">
+                                                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                                                    <button type="button" id="btn-apply-suggestion-gcp" class="btn btn-info" data-dismiss="modal">Confirm</button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    </div>
+                    <div class="col-lg-12 col-md-12">
+                        <div class="row">
+                            <div class="col-xl-6 col-xxl-6 col-lg-6 col-md-6 col-sm-12">
+                            <div class="card">
+                                <div class="card-header d-block">
+                                    <h4 style="color:#276b8c">Cost Metrics</h4>
+                                </div>
+                                <div class="card-body" id="cost_optimization">
+                                    <div class="basic-form">
+                                        <form>
+                                             <div class="form-group row" style="margin: 22px 3px 15px 0px;">
+                                                 <label class="col-lg-4 col-md-4 col-form-label">Select application</label>
+                                                 <div class="col-lg-6 col-md-6">
+                                                     <select class="form-control" id="cost_metric_apps" data-minimum-results-for-search="Infinity">
+                                                    <option></option>
+                                                </select>
+                                                 </div>
+                                            </div>
+
+                                            <div class="form-group row" style="margin: 22px 3px 15px 0px;">
+                                                <label class="col-lg-4 col-md-4 col-form-label">CPU Request</label>
+                                                <div class="col-lg-8 col-md-8">
+                                                     <input type="text" disabled class="form-control input-default" id="cpu_request">
+                                                </div>
+                                            </div>
+                                            <div class="form-group row" style="margin: 22px 3px 15px 0px;">
+                                                <label class="col-lg-4 col-md-4 col-form-label">CPU Used</label>
+                                                <div class="col-lg-8 col-md-8">
+                                                     <input type="text" disabled class="form-control input-default" id="cpu_used">
+                                                </div>
+                                            </div>
+                                            <div class="form-group row" style="margin: 22px 3px 15px 0px;">
+                                                <label class="col-lg-4 col-md-4 col-form-label">Memory Request</label>
+                                                <div class="col-lg-8 col-md-8">
+                                                     <input type="text" disabled class="form-control input-default" id="mem_request">
+                                                </div>
+                                            </div>
+                                            <div class="form-group row" style="margin: 22px 3px 15px 0px;">
+                                                <label class="col-lg-4 col-md-4 col-form-label">Memory Used</label>
+                                                <div class="col-lg-8 col-md-8">
+                                                     <input type="text" disabled class="form-control input-default" id="mem_used">
+                                                </div>
+                                            </div>
+                                            <div class="form-group row" style="margin: 22px 3px 15px 0px;">
+                                                <label class="col-lg-4 col-md-4 col-form-label">Deployed On</label>
+                                                <div class="col-lg-8 col-md-8">
+                                                     <input type="text" disabled class="form-control input-default" id="deployed_on">
+                                                </div>
+                                            </div>
+                                            <div class="form-group row" style="margin: 22px 3px 15px 0px;">
+                                                <label class="col-lg-4 col-md-4 col-form-label">Monthly Cost</label>
+                                                <div class="col-lg-8 col-md-8">
+                                                     <input type="text" disabled class="form-control input-default" id="monthly_cost">
+                                                </div>
+                                            </div>
+                                             <div class="form-group row" style="margin: 22px 3px 15px 0px;display:none">
+                                                <label class="col-lg-4 col-md-4 col-form-label">Deployed On</label>
+                                                <div class="col-lg-8 col-md-8">
+                                                     <input type="text" disabled class="form-control input-default" id="cluster">
+                                                </div>
+                                            </div>
+                                             <div class="basic-list-group" style="margin-top: 50px">
+                                                <ul class="list-group" id="cost_recommendations">
+                                                </ul>
+                                            </div>
+                                            <div id="cost_alert" class="alert alert-success alert-dismissible fade show" style="display:none">
+												  <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+												  <strong>Deployed!</strong> Suggestions were deployed successfully!
+											</div>
+                                            <div id="cost_alert2" class="alert alert-danger alert-dismissible fade show" style="display:none">
+												  <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+												  <strong>Your requested was failed!</strong>
+											</div>
+                                            <div class="form-group" style="margin: 10px;">
+                                                <div class="bootstrap-modal">
+                                                    <button type="button" class="btn btn-info" data-toggle="modal" data-target="#basicModal_cost">Apply Suggestions</button>
+                                                    <div class="modal fade" id="basicModal_cost">
+                                                        <div class="modal-dialog" role="document">
+                                                            <div class="modal-content">
+                                                                <div class="modal-header">
+                                                                    <h5 class="modal-title">Confirm!</h5>
+                                                                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span>
+                                                                    </button>
+                                                                </div>
+                                                                <div class="modal-body">Please confirm to continue this deployment!</div>
+                                                                <div class="modal-footer">
+                                                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                                                    <button type="button" id="btn_cost_optimize" class="btn btn-info" data-dismiss="modal">Confirm</button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                            <div class="col-xl-6 col-xxl-6 col-lg-6 col-md-6 col-sm-12">
+                                <div class="card">
+                                    <div class="card-body basic-form">
+                                        <form>
+                                            <div class="form-group row" style="margin: 22px 3px 15px 0px;">
+                                                 <label class="col-lg-2 col-md-2 col-form-label">Deploy To </label>
+                                                 <div class="col-lg-4 col-md-4">
+                                                    <select class="form-control" id="deploy_to" data-minimum-results-for-search="Infinity">
+                                                    </select>
+                                                 </div>
+                                            </div>
+                                         </form>
+                                    </div>
+                                    <div class="card-body" id="aws-form">
+                                        <div class="card-header d-block">
+                                            <h4 style="color:#276b8c">Amazon Cloud Deployment</h4>
+                                        </div>
+                                        <div class="basic-form">
+                                            <form>
+                                                <div class="form-group" style="margin: 10px;">
+                                                      <label>Application name (only letters or digits, no special characters)</label>
+                                                    <input type="text" class="form-control input-default " id="app_id_aws">
+                                                </div>
+                                                <div class="form-group" style="margin: 10px;">
+                                                    <label>Environment</label>
+                                                    <select class="form-control" id="aws_environment" data-minimum-results-for-search="Infinity"></select>
+                                                </div>
+                                                <div class="form-group" style="margin: 10px;">
+                                                    <label>OS / Container Image</label>
+                                                    <select class="form-control" id="aws_image" data-minimum-results-for-search="Infinity"></select>
+                                                </div>
+                                                <div class="form-group" style="margin: 10px;">
+                                                    <label>Select CPU</label>
+                                                    <select class="form-control" id="cpu_no" data-minimum-results-for-search="Infinity"></select>
+                                                </div>
+                                                <div class="form-group row" style="margin: 22px 3px 15px 0px;">
+                                                    <label class="col-lg-4 col-md-4 col-form-label">Memory Size (Gib)</label>
+                                                    <div class="col-lg-8 col-md-8">
+                                                        <input type="range" class="form-control-range" min="1" max="64" value="1" id="memory_req" onInput="$('#rangeval_aws').html($(this).val())"><span id="rangeval_aws">1</span>
+                                                    </div>
+                                                </div>
+                                                 <div class="form-group row" style="margin: 22px 3px 15px 0px;">
+                                                    <label class="col-lg-4 col-md-4 col-form-label">Number of instances</label>
+                                                    <div class="col-lg-8 col-md-8">
+                                                        <input type="range" class="form-control-range" min="1" max="10" value="1" id="replica_no_aws" onInput="$('#rangeval_replica_no_aws').html($(this).val())"><span id="rangeval_replica_no_aws">1</span>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group" style="margin: 10px;">
+                                                    <label>Select storage type</label>
+                                                    <select class="form-control" id="storage_req" data-minimum-results-for-search="Infinity"></select>
+                                                </div>
+                                                <div class="form-group" style="margin: 10px;">
+                                                    <label>Enter storage size (Gib)</label>
+                                                    <input type="text" class="form-control input-default " id="storage_size">
+                                                </div>
+                                                <div class="form-group" style="margin: 10px;">
+                                                    <label>Select Region</label>
+                                                    <select class="form-control" id="region" data-minimum-results-for-search="Infinity"></select>
+                                                </div>
+
+                                                <div id="aws_alert" class="alert alert-success alert-dismissible fade show" style="display:none">
+                                                      <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                                      <strong>Deployed!</strong> Your requested deployment was done successfully!
+                                                </div>
+                                                <div id="aws_alert2" class="alert alert-danger alert-dismissible fade show" style="display:none">
+                                                      <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                                      <strong>Your requested deployment was failed!</strong>
+                                                </div>
+                                                <div class="form-group" style="margin: 10px;">
+                                                    <div class="bootstrap-modal">
+                                                        <button type="button" class="btn btn-info" data-toggle="modal" data-target="#basicModal">Deploy</button>
+                                                        <div class="modal fade" id="basicModal">
+                                                            <div class="modal-dialog" role="document">
+                                                                <div class="modal-content">
+                                                                    <div class="modal-header">
+                                                                        <h5 class="modal-title">Confirm!</h5>
+                                                                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span>
+                                                                        </button>
+                                                                    </div>
+                                                                    <div class="modal-body">Please confirm to continue this deployment!</div>
+                                                                    <div class="modal-footer">
+                                                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                                                        <button type="button" id="btn-deploy-aws" class="btn btn-info" data-dismiss="modal">Confirm</button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    <div class="card-body" id="gcp-form" style="display:none">
+                                        <div class="card-header d-block">
+                                            <h4 style="color:#276b8c">Google Cloud Deployment</h4>
+                                        </div>
+                                        <div class="basic-form">
+                                            <form>
+                                                <div class="form-group" style="margin: 10px;">
+                                                    <label>Application name (only letters or digits, no special characters)</label>
+                                                    <input type="text" class="form-control input-default " id="app_id_gcp">
+                                                </div>
+                                                <div class="form-group" style="margin: 10px;">
+                                                    <label>Environment</label>
+                                                    <select class="form-control" id="gcp_environment" data-minimum-results-for-search="Infinity"></select>
+                                                </div>
+                                                <div class="form-group" style="margin: 10px;">
+                                                    <label>OS / Container Image</label>
+                                                    <select class="form-control" id="gcp_image" data-minimum-results-for-search="Infinity"></select>
+                                                </div>
+
+                                                <div class="form-group" style="margin: 10px;">
+                                                    <label>Select CPU</label>
+                                                    <select class="form-control" id="cpu_no_gcp" data-minimum-results-for-search="Infinity"></select>
+                                                </div>
+                                                <div class="form-group row" style="margin: 22px 3px 15px 0px;">
+                                                    <label class="col-lg-4 col-md-4 col-form-label">Memory Size (Gib)</label>
+                                                    <div class="col-lg-8 col-md-8">
+                                                        <input type="range" class="form-control-range" min="0" max="64" value="1" id="memory_req_gcp" onInput="$('#rangeval_gcp').html($(this).val())"><span id="rangeval_gcp">1</span>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group row" style="margin: 22px 3px 15px 0px;">
+                                                    <label class="col-lg-4 col-md-4 col-form-label">Number of instances</label>
+                                                    <div class="col-lg-8 col-md-8">
+                                                        <input type="range" class="form-control-range" min="0" max="64" value="1" id="replica_no_gcp" onInput="$('#rangeval_instance_no_gcp').html($(this).val())"><span id="rangeval_instance_no_gcp">1</span>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group" style="margin: 10px;">
+                                                    <label>Select storage type</label>
+                                                    <select class="form-control" id="storage_req_gcp" data-minimum-results-for-search="Infinity"></select>
+                                                </div>
+                                                <div class="form-group" style="margin: 10px;">
+                                                     <label>Enter storage size (Gib)</label>
+                                                    <input type="text" class="form-control input-default " id="storage_size_gcp">
+                                                </div>
+
+                                                <div class="form-group" style="margin: 10px;">
+                                                    <label>Select Region</label>
+                                                    <select class="form-control" id="region_gcp" data-minimum-results-for-search="Infinity"></select>
+                                                </div>
+
+                                                <div id="gcp_alert" class="alert alert-success alert-dismissible fade show" style="display:none">
+                                                      <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                                      <strong>Deployed!</strong> Your requested deployment was done successfully!
+                                                </div>
+                                                <div id="gcp_alert2" class="alert alert-danger alert-dismissible fade show" style="display:none">
+                                                      <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                                      <strong>Your requested deployment was failed!</strong>
+                                                </div>
+                                                <div class="form-group" style="margin: 10px;">
+                                                    <div class="bootstrap-modal">
+                                                        <button type="button" class="btn btn-info" data-toggle="modal" data-target="#basicModal_gcp">Deploy</button>
+                                                        <div class="modal fade" id="basicModal_gcp">
+                                                            <div class="modal-dialog" role="document">
+                                                                <div class="modal-content">
+                                                                    <div class="modal-header">
+                                                                        <h5 class="modal-title">Confirm!</h5>
+                                                                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span>
+                                                                        </button>
+                                                                    </div>
+                                                                    <div class="modal-body">Please confirm to continue this deployment!</div>
+                                                                    <div class="modal-footer">
+                                                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                                                        <button type="button" id="btn-deploy-gcp" class="btn btn-info" data-dismiss="modal">Confirm</button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                </div>
+           </div>
+
+
+
+
+    <script src="{{ url_for('static', filename='js/dashboard/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard/datatables.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard/morris.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard/global.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard/raphael.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard/init.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard/custom.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard/select2.full.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard/select2-init.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.8/js/select2.min.js" defer></script>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
+
+    <script>
+            $(document).ready(function () {
+                populateOverviewAllocation();
+                populateMetrics();
+                populateGaugeChart();
+
+                $('#cpu_no').select2({
+                    ajax: {
+                        type: 'GET',
+                        url: 'http://127.0.0.1:9000/optimize/allocation/get_cpu_aws',
+                        data: {},
+                        dataType: 'json',
+                        processResults: function (data) {
+                        return {
+                            results: data
+                        };
+                        }
+                    }
+                });
+
+
+                 $('#cpu_no_gcp').select2({
+                    ajax: {
+                        type: 'GET',
+                        url: 'http://127.0.0.1:9000/optimize/allocation/get_cpu_gcp',
+                        data: {},
+                        dataType: 'json',
+                        processResults: function (data) {
+                        return {
+                            results: data
+                        };
+                        }
+                    }
+                });
+
+
+                $('#cloud_provider').select2({
+                    data: [
+                            { "id": 1, "text": "Amazon-AWS" },
+                            { "id": 2, "text": "Google-Cloud" }
+                        ]
+                });
+
+                $('#deploy_to').select2({
+                    data: [
+                            { "id": 1, "text": "Amazon AWS" },
+                            { "id": 2, "text": "Google Cloud" }
+                        ]
+                });
+
+
+                $('#deploy_to').change(function(){
+                    cloud = $('#deploy_to :selected').text()
+                    if(cloud == 'Amazon AWS'){
+                        $('#aws-form').show()
+                        $('#gcp-form').hide()
+                    }
+                    else{
+                         $('#aws-form').hide()
+                        $('#gcp-form').show()
+                    }
+                })
+
+
+                 $('#aws_environment').select2({
+                    data: [
+                            { "id": 1, "text": "Staging" },
+                            { "id": 2, "text": "Production" }
+                        ]
+                });
+
+
+                $('#gcp_environment').select2({
+                    data: [
+                            { "id": 1, "text": "Staging" },
+                            { "id": 2, "text": "Production" }
+                        ]
+                });
+
+
+                $('#aws_image').select2({
+                     ajax: {
+                        type: 'GET',
+                        url: 'http://127.0.0.1:9000/optimize/allocation/get_aws_os_type',
+                        data: {},
+                        dataType: 'json',
+                        processResults: function (data) {
+                        return {
+                            results: data
+                        };
+                        }
+                    }
+                });
+
+
+            $('#gcp_image').select2({
+                     ajax: {
+                        type: 'GET',
+                        url: 'http://127.0.0.1:9000/optimize/allocation/get_gcp_os_type',
+                        data: {},
+                        dataType: 'json',
+                        processResults: function (data) {
+                        return {
+                            results: data
+                        };
+                        }
+                    }
+                });
+
+
+                $('#storage_req').select2({
+                    ajax: {
+                        type: 'GET',
+                        url: 'http://127.0.0.1:9000/optimize/allocation/get_aws_storage_type',
+                        data: {},
+                        dataType: 'json',
+                        processResults: function (data) {
+                        return {
+                            results: data
+                        };
+                        }
+                    }
+                });
+
+
+                $('#storage_req_gcp').select2({
+                    ajax: {
+                        type: 'GET',
+                        url: 'http://127.0.0.1:9000/optimize/allocation/get_gcp_storage_type',
+                        data: {},
+                        dataType: 'json',
+                        processResults: function (data) {
+                        return {
+                            results: data
+                        };
+                        }
+                    }
+                });
+
+                
+                $('#region').select2({
+                    ajax: {
+                        type: 'GET',
+                        url: 'http://127.0.0.1:9000/optimize/allocation/get_regions',
+                        data: {},
+                        dataType: 'json',
+                        processResults: function (data) {
+                        return {
+                            results: data
+                        };
+                        }
+                    }
+                })
+
+
+                $('#region_gcp').select2({
+                    ajax: {
+                        type: 'GET',
+                        url: 'http://127.0.0.1:9000/optimize/allocation/get_gcp_regions',
+                        data: {},
+                        dataType: 'json',
+                        processResults: function (data) {
+                        return {
+                            results: data
+                        };
+                        }
+                    }
+                })
+
+
+                $('#btn-deploy-aws').click(function() {
+                    let cloud_provider = 'aws'
+                    let app_name= $('#app_id_aws').val()
+                    let aws_environment =  $('#aws_environment :selected').text()
+                    let aws_image = $('#aws_image :selected').text()
+                    let cpu_no = $('#cpu_no').val()
+                    let memory_req = $('#memory_req').val()
+                    let replica_no_aws = $('#replica_no_aws').val()
+                    let storage_req = $('#storage_req :selected').text()
+                    let storage_size = $("#storage_size").val()
+                    let region = $('#region :selected').text()
+                    $.ajax({
+                        type: "POST",
+                        url: "http://127.0.0.1:9000/optimize/allocation/deploy_application",
+                        data: JSON.stringify({
+                            "cloud_provider":cloud_provider,
+                            "application_id":app_name,
+                            "environment": aws_environment,
+                            "os_type":aws_image,
+                            "cpu_number":cpu_no,
+                            "memory_req":memory_req,
+                            "replica_count":replica_no_aws,
+                            "storage_type":storage_req,
+                            "storage_size":storage_size,
+                            "region":region
+                        }),
+                        contentType: "application/json; charset=utf-8",
+                        crossDomain: true,
+                        dataType: "json",
+                        success: function (data, status, jqXHR) {
+                            $("#aws_alert").fadeTo(2000, 500).slideUp(500, function() {
+                              $("#aws_alert").slideUp(500);
+                          });
+                           populateOverviewAllocation()
+                        
+                        },
+
+                        error: function (jqXHR, status) {
+                              $("#aws_alert2").fadeTo(2000, 500).slideUp(500, function() {
+                              $("#aws_alert2").slideUp(500);
+                          });
+                            console.log(jqXHR);
+                        }
+                    });
+                });
+
+
+
+                     window.populate_cost_metrics = function(data) {
+                           const applications = data.map((item, idx) => ({
+                            id: idx + 1,
+                            text: item.application
+                          }));
+
+                           $('#cost_metric_apps').select2({
+                                data: applications,
+
+                           });
+
+                            $('#cost_metric_apps').change(function() {
+                                $('#cost_recommendations').empty();
+
+                                    var selectedAppName = $('#cost_metric_apps :selected').text()
+                                    var selectedAppData = data.filter(function(app) {
+                                        return app.application === selectedAppName;
+                                      });
+
+                                    if (selectedAppData.length > 0) {
+                                        var app = selectedAppData[0];
+                                        console.log('select app data' + app.memory_used + app.cpu_used)
+                                        $('#cpu_request').val(app.cpu_requested);
+                                        $('#cpu_used').val(app.cpu_used);
+                                        $('#mem_request').val(app.memory_requested);
+                                        $('#mem_used').val(app.memory_used);
+                                        $('#deployed_on').val(app.cloud_provider);
+                                        $('#monthly_cost').val('$ ' + app.monthly_cost);
+                                        $('#cluster').val(app.cluster);
+
+
+                                        const costSuggestions = app.recommendations;
+                                        const $cost_recommendations_container = $('#cost_recommendations');
+                                        $cost_recommendations_container.append(`<li class="list-group-item" style="background:#2596be;color:white">Cost Optimization Suggestions</li>`);
+
+                                        const $costlist = $('<ul class="list-group list-group-flush"></ul>');
+
+                                        for (let i = 0; i < costSuggestions.length; i++) {
+                                            $costlist.append(`
+                                                <li class="list-group-item">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input cost_suggestions" type="checkbox" value="${costSuggestions[i]}" id="flexCheckChecked_cost_${i}">
+                                                        <label class="form-check-label" for="flexCheckChecked_cost_${i}">
+                                                            ${costSuggestions[i]}
+                                                        </label>
+                                                    </div>
+                                                </li>`);
+                                        }
+
+                                        $cost_recommendations_container.append($costlist);
+                                    }
+                                })
+                            }
+
+        $('#btn_cost_optimize').click(function(){
+
+            $('#cost_recommendations').empty();
+            let selectedSuggestions = [];
+
+            setTimeout(() => {
+                $('.cost_suggestions:checked').each(function () {
+                    selectedSuggestions.push($(this).val());
+                });
+                console.log(selectedSuggestions);
+            }, 500);
+
+                        $.ajax({
+                            url: 'http://127.0.0.1:9000/optimize/allocation/apply_cost_recommendations',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({
+                                cluster_name: $('#cluster').val(),
+                                suggestions: selectedSuggestions }),
+                            success: function (response) {
+                                $("#cost_alert").fadeTo(2000, 500).slideUp(500, function() {
+                                      $("#cost_alert").slideUp(500);
+                                  });
+                                populateOverviewAllocation()
+                                populateMetrics()
+                                populateGaugeChart()
+                            },
+                            error: function (err) {
+                                $("#cost_alert2").fadeTo(2000, 500).slideUp(500, function() {
+                                      $("#cost_alert2").slideUp(500);
+                                  });
+                                console.error(err);
+                            }
+                        });
+        })
+
+                $('#btn-deploy-gcp').click(function() {
+                    let cloud_provider = 'gcp'
+                    let app_name= $('#app_id_gcp').val()
+                    let aws_environment =  $('#gcp_environment :selected').text()
+                    let aws_image = $('#gcp_image :selected').text()
+                    let cpu_no = $('#cpu_no_gcp').val()
+                    let memory_req = $('#memory_req_gcp').val()
+                    let replica_no_gcp = $('#replica_no_gcp').val()
+                    let storage_req = $('#storage_req_gcp :selected').text()
+                    let storage_size = $("#storage_size_gcp").val()
+                    let region = $('#region_gcp :selected').text()
+                    $.ajax({
+                        type: "POST",
+                        url: "http://127.0.0.1:9000/optimize/allocation/deploy_application",
+                        data: JSON.stringify({
+                            "cloud_provider":cloud_provider,
+                            "application_id":app_name,
+                            "environment": aws_environment,
+                            "os_type":aws_image,
+                            "cpu_number":cpu_no,
+                            "memory_req":memory_req,
+                            "replica_count":replica_no_gcp,
+                            "storage_type":storage_req,
+                            "storage_size":storage_size,
+                            "region":region
+                        }),
+                        contentType: "application/json; charset=utf-8",
+                        crossDomain: true,
+                        dataType: "json",
+                        success: function (data, status, jqXHR) {
+                            $("#gcp_alert").fadeTo(2000, 500).slideUp(500, function() {
+                              $("#gcp_alert").slideUp(500);
+                          });
+                            populateOverviewAllocation()
+
+                        },
+
+                        error: function (jqXHR, status) {
+                            // error handler
+                            console.log(jqXHR);
+                            $("#gcp_alert2").fadeTo(2000, 500).slideUp(500, function() {
+                              $("#gcp_alert2").slideUp(500);
+                          });
+                        }
+                    });
+                });
+
+
+
+            function populateOverviewAllocation(){
+
+                if ( $.fn.DataTable.isDataTable('#allocation_overview') ) {
+                    $('#allocation_overview').DataTable().clear().destroy();
+                }
+
+                $.ajax({
+                    type: "GET",
+                    url: 'http://127.0.0.1:9000/optimize/allocation/get_deployments',
+                    dataType: 'json',
+
+                    success: function (obj, textstatus) {
+                        console.log(obj);
+                            $('#allocation_overview').DataTable({
+                                data: obj,
+                                searching: false, paging: false, info: false,
+                                columns: [
+                                        { data: 'application' },
+                                        { data: 'cloud_provider' },
+                                        { data: 'cluster' },
+                                        { data: 'replicas' },
+                                        { data: 'environment' },
+                                        { data: 'region' },
+                                        { data: 'monthly_cost' }
+                                        ]
+                            });
+
+                          populate_cost_metrics(obj);
+                    },
+                    error: function (obj, textstatus) {
+                        alert(obj.msg);
+                    }
+                    });
+
+                }
+
+
+                function applyOptimization(namespace, deployment, cpu, memory) {
+                  fetch('http://127.0.0.1:9000/optimize/allocation/optimize_resources', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      namespace: namespace,
+                      deployment: deployment,
+                      cpu: cpu,
+                      memory: memory
+                    })
+                  })
+                  .then(res => res.json())
+                  .then(data => {
+                    document.getElementById('response').innerText = data.status;
+                  });
+                }
+
+
+                $('#btn-apply-suggestion-aws').click(function() {
+                    const selected = [];
+
+                        $('input.form-check-input:checked').each(function () {
+                            const suggestion = $(this).val();
+                            const cluster = $(this).data('cluster');
+
+                            selected.push({ cluster, suggestion });
+                        });
+                        console.log(selected)
+
+                        $.ajax({
+                            url: 'http://127.0.0.1:9000/optimize/allocation/apply_suggestions',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({ selected }),
+                            success: function (response) {
+                                $("#optimize_alert_aws").fadeTo(2000, 500).slideUp(500, function() {
+                                      $("#optimize_alert_aws").slideUp(500);
+                                  });
+                                populateMetrics()
+                                populateGaugeChart()
+                            },
+                            error: function (err) {
+                                $("#optimize_alert_aws2").fadeTo(2000, 500).slideUp(500, function() {
+                                      $("#optimize_alert_aws2").slideUp(500);
+                                  });
+                                console.error(err);
+                            }
+                        });
+
+                });
+
+                $('#btn-apply-suggestion-gcp').click(function() {
+                        const selected = [];
+
+                        $('input.form-check-input:checked').each(function () {
+                            const suggestion = $(this).val();
+                            const cluster = $(this).data('cluster');
+
+                            selected.push({ cluster, suggestion });
+                        });
+                        console.log(selected)
+
+                        $.ajax({
+                            url: 'http://127.0.0.1:9000/optimize/allocation/apply_suggestions',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({ selected }),
+                            success: function (response) {
+                                 $("#optimize_alert_gcp").fadeTo(2000, 500).slideUp(500, function() {
+                                      $("#optimize_alert_gcp").slideUp(500);
+                                  });
+                                populateMetrics()
+                                populateGaugeChart()
+                            },
+                            error: function (err) {
+                                $("#optimize_alert_gcp2").fadeTo(2000, 500).slideUp(500, function() {
+                                      $("#optimize_alert_gcp2").slideUp(500);
+                                  });
+                                console.error(err);
+                            }
+                        });
+
+                });
+            })
+
+
+
+
+        function populateMetrics() {
+
+            const $container = $('#metrics tbody');
+            $container.empty();
+
+          $.ajax({
+            type: "GET",
+            url: 'http://127.0.0.1:9000/optimize/allocation/get_cluster_metrics',
+            dataType: 'json',
+            success: function (obj, textstatus) {
+              console.log(obj);
+
+              Object.entries(obj).forEach(([cluster, data]) => {
+                if (!data.aggregate || !data.nodes) return;
+
+                const { cpu_limit, memory_limit, pod_count } = data.aggregate;
+
+                data.nodes.forEach(node => {
+                  const cpuPercentage = node.cpu.percentage;
+                  const memPercentage = node.memory.percentage;
+
+
+                  const getProgressBarClass = (percentage) => {
+                    if (percentage >= 80) return 'progress-bar-danger';
+                    if (percentage >= 70) return 'progress-bar-warning';
+                    return 'progress-bar-info';
+                  };
+
+                  const cpuClass = getProgressBarClass(cpuPercentage);
+                  const memClass = getProgressBarClass(memPercentage);
+
+                  const row = `
+                    <tr>
+<!--                      <td>${cluster}</td>-->
+<!--                      <td>${pod_count}</td>-->
+                       <td>${node.node_name}</td>
+                      <td>${node.cpu.used}</td>
+                      <td>${node.cpu.total}</td>
+                      <td>
+                        <div class="current-progressbar">
+                          <div class="progress">
+                            <div class="progress-bar ${cpuClass}" style="width: ${cpuPercentage}%;color:black" role="progressbar" aria-valuenow="${cpuPercentage}" aria-valuemin="0" aria-valuemax="50">
+                              ${cpuPercentage}%
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>${node.memory.used}</td>
+                      <td>${node.memory.total}</td>
+                      <td>
+                        <div class="current-progressbar">
+                          <div class="progress">
+                            <div class="progress-bar ${memClass}" style="width: ${memPercentage}%;color:black" role="progressbar" aria-valuenow="${memPercentage}" aria-valuemin="0" aria-valuemax="50">
+                              ${memPercentage}%
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  `;
+                  $('#metrics tbody').append(row);
+                });
+              });
+
+
+              generateSuggestionList(obj)
+            },
+            error: function (obj, textstatus) {
+              alert(obj.msg);
+            }
+          });
+        }
+
+
+
+    function populateGaugeChart(){
+
+            const $container_chart_cpu = $('#chart_cpu');
+            $container_chart_cpu.empty();
+            const $container_chart_pods = $('#chart_pods');
+            $container_chart_pods.empty();
+            const $container_chart_memory = $('#chart_memory');
+            $container_chart_memory.empty();
+
+        $.ajax({
+            type: "GET",
+            url: 'http://127.0.0.1:9000/optimize/allocation/get_pods_cpu_memory',
+            dataType: 'json',
+            success: function (obj, textstatus) {
+                 Morris.Donut({
+        element: 'chart_cpu',
+        data: [{
+            label: "\xa0 \xa0 Limit \xa0 \xa0",
+            value: obj.cpu_limit,
+
+        }, {
+            label: "\xa0 \xa0 Request \xa0 \xa0",
+            value: obj.cpu_request
+        }],
+        resize: true,
+        colors: ['#c2db07', '#edd928']
+    });
+
+ Morris.Donut({
+        element: 'chart_pods',
+        data: [{
+            label: "\xa0 \xa0 Current \xa0 \xa0",
+            value: obj.current_pod_count,
+
+        }, {
+            label: "\xa0 \xa0 Desired \xa0 \xa0",
+            value: obj.desired_pod_count
+        }],
+        resize: true,
+<!--        colors: ['#4ab0c2', '#276b8c']-->
+            colors: ['#219deb', '#4055e3']
+    });
+
+     Morris.Donut({
+        element: 'chart_memory',
+
+        data: [{
+            label: "\xa0 \xa0 Limit \xa0 \xa0",
+            value: obj.memory_limit,
+
+        }, {
+            label: "\xa0 \xa0 Request \xa0 \xa0",
+            value: obj.memory_request
+        }],
+        resize: true,
+        colors: ['#19e3d3', '#9df774']
+    });
+            },
+            error: function (obj, textstatus) {
+              alert(obj.msg);
+            }
+            })
+        }
+
+  function generateSuggestionList(data){
+        const $aws_suggestion_container = $('#suggestions_container_aws');
+        $aws_suggestion_container.empty();
+        const $gcp_suggestion_container = $('#suggestions_container_gcp');
+        $gcp_suggestion_container.empty();
+
+        if (data["aws-cluster"]) {
+            const awsSuggestions = data["aws-cluster"].suggestions;
+            $aws_suggestion_container.append(`<li class="list-group-item" style="background:#2596be;color:white">Resource Optimization Suggestions AWS</li>`);
+
+            const $awslist = $('<ul class="list-group list-group-flush"></ul>');
+
+            for (let i = 0; i < awsSuggestions.length; i++) {
+                $awslist.append(`
+                    <li class="list-group-item">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="${awsSuggestions[i]}" id="flexCheckChecked_aws_${i}" data-cluster="aws-cluster">
+                            <label class="form-check-label" for="flexCheckChecked_aws_${i}">
+                                ${awsSuggestions[i]}
+                            </label>
+                        </div>
+                    </li>`);
+            }
+
+            $aws_suggestion_container.append($awslist);
+        }
+
+
+        if (data["gcp-cluster"]) {
+            const gcpSuggestions = data["gcp-cluster"].suggestions;
+            $gcp_suggestion_container.append(`<li class="list-group-item" style="background:#2596be;color:white">Resource Optimization Suggestions Google Cloud</li>`);
+
+            const $gcplist = $('<ul class="list-group list-group-flush"></ul>');
+
+            for (let i = 0; i < gcpSuggestions.length; i++) {
+                $gcplist.append(`
+                    <li class="list-group-item">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="${gcpSuggestions[i]}" id="flexCheckChecked_gcp_${i}" data-cluster="gcp-cluster">
+<!--                            <input class="form-check-input" type="checkbox" value="" id="flexCheckChecked_aws_${i}">-->
+                            <label class="form-check-label" for="flexCheckChecked_aws_${i}">
+                                ${gcpSuggestions[i]}
+                            </label>
+                        </div>
+                    </li>`);
+            }
+
+            $gcp_suggestion_container.append($gcplist);
+    }
+        }
+
+
+    </script>
+        
+</body>
+
+</html>
